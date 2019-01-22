@@ -24,15 +24,16 @@ let string_of_event = function
   | Sexp -> fun event ->
     Sexplib.Sexp.to_string_hum (Inotify_event.sexp_of_t event)
 
-let stream format events =
-  let dir = Sys.getcwd () in
+let stream format events dir n =
+  let dir = match dir with None -> Sys.getcwd () | Some x -> x in
   (* We can't sit in the directory being monitored if we want
      termination events. *)
   Sys.chdir "/";
   let inotify = Inotify.create () in
   let _watch = Inotify.add_watch inotify dir events in
   let continue = ref true in
-  while !continue do
+  let remaining = ref n in
+  while !continue && !remaining <> (Some 0) do
     (* Block until there is something to read. Otherwise, our ioctl
        returns 0 and then makes a 0 read which errors with EINVAL. *)
     ignore (Unix.select [inotify] [] [] ~-.1.);
@@ -42,7 +43,8 @@ let stream format events =
       (fun ((_, kinds, _, _) as event) ->
          print_endline (string_of_event format event);
          if List.mem Inotify.Ignored kinds
-         then continue := false
+         then continue := false;
+         remaining := match !remaining with Some n -> Some (n - 1) | None -> None
       )
       events
   done;
@@ -51,7 +53,12 @@ let stream format events =
 open Cmdliner
 
 let stream_cmd =
-  let doc = "output an inotify event stream" in
+  let n =
+    let doc = "Receive only n events" in
+    Arg.(value & opt (some int) None & info [ "n" ] ~doc) in
+  let dir =
+    let doc = "Watch a particular directory" in
+    Arg.(value & opt (some string) None & info [ "dir"] ~doc) in
   let format = Arg.(value (opt (enum [
       "string", String;
       "sexp", Sexp;
@@ -80,8 +87,8 @@ let stream_cmd =
       "all",           S_All;
     ])) [Inotify.S_All] (info ~docv:"EVENTS" ["events"])))
   in
-  Term.(ret (pure stream $ format $ events)),
-  Term.info "inotify-events" ~doc
+  Term.(ret (pure stream $ format $ events $ dir $ n)),
+  Term.info "inotify-events" ~doc:"output an inotify event stream"
 
 ;;
 match Term.eval stream_cmd with
