@@ -8,20 +8,16 @@ bug-reports: "https://github.com/dsheets/ocaml-inotify-event/issues"
 dev-repo: "https://github.com/dsheets/ocaml-inotify-event.git"
 license: "ISC"
 build: [
-  [make "build"]
+  ["dune" "subst"]
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name] {with-test}
 ]
-install: [
-  [make "install"]
-]
-remove: [make "uninstall"]
 depends: [
-  "ocamlfind" {build}
-  "ocamlbuild" {build}
+  "dune" {build}
   "base-bytes"
   "inotify" {>= "2.2"}
   "sexplib"
   "ppx_sexp_conv"
-]
-depopts: [
+  "ppx_deriving"
   "cmdliner"
 ]

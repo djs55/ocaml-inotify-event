@@ -2,4 +2,4 @@
 _build
 _tests
 *.native
-
+*.merlin

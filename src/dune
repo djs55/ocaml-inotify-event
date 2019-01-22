@@ -1,0 +1,7 @@
+(executables
+ (names inotify_events)
+ (libraries cmdliner sexplib inotify inotify_event))
+
+(install
+ (section bin)
+ (files (inotify_events.exe as inotify-events)))
