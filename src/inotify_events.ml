@@ -24,8 +24,8 @@ let string_of_event = function
   | Sexp -> fun event ->
     Sexplib.Sexp.to_string_hum (Inotify_event.sexp_of_t event)
 
-let stream format events =
-  let dir = Sys.getcwd () in
+let stream format events dir =
+  let dir = match dir with None -> Sys.getcwd () | Some x -> x in
   (* We can't sit in the directory being monitored if we want
      termination events. *)
   Sys.chdir "/";
@@ -51,7 +51,9 @@ let stream format events =
 open Cmdliner
 
 let stream_cmd =
-  let doc = "output an inotify event stream" in
+  let dir =
+    let doc = "Watch a particular directory" in
+    Arg.(value & opt (some string) None & info [ "dir"] ~doc) in
   let format = Arg.(value (opt (enum [
       "string", String;
       "sexp", Sexp;
@@ -80,8 +82,8 @@ let stream_cmd =
       "all",           S_All;
     ])) [Inotify.S_All] (info ~docv:"EVENTS" ["events"])))
   in
-  Term.(ret (pure stream $ format $ events)),
-  Term.info "inotify-events" ~doc
+  Term.(ret (pure stream $ format $ events $ dir)),
+  Term.info "inotify-events" ~doc:"output an inotify event stream"
 
 ;;
 match Term.eval stream_cmd with
